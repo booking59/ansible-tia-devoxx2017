@@ -1,33 +1,44 @@
 ---
 - name: Add repository
-  tags: 
-    - util
-    - init
   become: true
-  yum_repository:
-    name: epel
-    description: EPEL YUM repo
-    baseurl: https://dl.fedoraproject.org/pub/epel/$releasever/$basearch/
+  ignore_errors: yes
+  tags: 
+     - site-certificat
+  shell: |
+    sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
+    sudo yum -y update && \
+    sudo yum -y install httpd python-certbot-apache expect openssl && \
+    sudo systemctl start httpd && sudo systemctl enable httpd
     
-- name: install the latest version of needed package
-  tags: 
-    - util
-    - init
-  become: true
-  package: name={{item}} state=latest
-  with_items:
-       - httpd 
-       - python-certbot-apache
-       - tmux
-       - openssl
-       - expect
- 
-- name: upgrade all packages
-  tags: 
-    - util
-    - init
-  package: name=* state=latest
-  
+#- name: Add repository
+#  tags: 
+#    - util
+#    - init
+#  become: true
+#  yum_repository:
+#    name: epel
+#    description: EPEL YUM repo
+#    baseurl: https://dl.fedoraproject.org/pub/epel/$releasever/$basearch/
+#
+#- name: upgrade all packages
+#  tags: 
+#    - util
+#    - init
+#  package: name=* state=latest
+#
+#- name: install the latest version of needed package
+#  tags: 
+#    - util
+#    - init
+#  become: true
+#  package: name={{item}} state=latest
+#  with_items:
+#       - httpd 
+#       - python-certbot-apache
+#       - tmux
+#       - openssl
+#       - expect
+# 
   
 - name: install default index file
   tags: 

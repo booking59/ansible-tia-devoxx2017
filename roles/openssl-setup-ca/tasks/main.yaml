@@ -300,8 +300,13 @@
     expect eof
     exit 0
     delim
-
-
+- stat: path=/etc/ssl/self/ca/intermediate/private/intermediate.key.pem
+  register: ca_int_key
+  
+- fail: msg="ca_int_key is not present"
+  when: ca_int_key.stat.exists == False
+#- fail: msg="ca_int_key is present"
+#  when: ca_int_key.stat.exists == True
 - stat: path=/etc/ssl/self/ca/intermediate/csr/intermediate.csr.pem
   register: intermediate_csr
 
@@ -322,13 +327,16 @@
     expect eof
     exit 0
     delim 
- 
+
+- fail: msg="intermediate_csr is not present"
+  when: intermediate_csr.stat.exists == False
+#- fail: msg="intermediate_csr is present"
+#  when: intermediate_csr.stat.exists == True
  
 - stat: path=/etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem
   register: intermediate_cert
   
-- name: create the signed CA intemediate certificate (sudo openssl verify -CAfile /etc/ssl/self/ca/certs/ca.cert.pem \
-      /etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem)
+- name: create the signed CA intemediate certificate (sudo openssl verify -CAfile /etc/ssl/self/ca/certs/ca.cert.pem /etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem)
   when: intermediate_cert.stat.exists == False
   tags: 
    - CA-intermediate
@@ -346,7 +354,21 @@
     expect eof
     exit 0
     delim 
+    
+- name: Check CA intermediate certificate
+  when: intermediate_cert.stat.exists == False
+  tags: 
+   - CA-intermediate
+   - CA-intermediate-openssl
+  become: true
+  shell: |
+    openssl verify -CAfile /etc/ssl/self/ca/certs/ca.cert.pem /etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem
 
+- fail: msg="intermediate_cert is not present"
+  when: intermediate_cert.stat.exists == False
+#- fail: msg="intermediate_cert is present"
+#  when: intermediate_cert.stat.exists == True
+  
 - stat: path=/etc/ssl/self/ca/intermediate/certs/ca-chain.cert.pem
   register: ca_chain_cert
 
