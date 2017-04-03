@@ -131,3 +131,6 @@ secrets/
 
 # ansible 
 *.retry
+
+#jedit
+*.marks

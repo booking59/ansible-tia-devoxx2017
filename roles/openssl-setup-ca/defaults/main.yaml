@@ -3,7 +3,7 @@
 ca_key_days: 10
 ca_subject: "/emailAddress=admin@parisjug.net/C=FR/ST=France/L=Paris/O=IT/CN=cert.parisjug.net"
 # this one should be vault
-ca_password: 
+ca_password: devoxx
 in_key_days: 10
 ca_int_subject: "/emailAddress=admin@parisjug.net/C=FR/ST=France/L=Paris/O=IT/CN=int.parisjug.net/OU=int.parisjug.net"
-ca_int_password: 
+ca_int_password: devoxx

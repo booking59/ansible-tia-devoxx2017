@@ -1,0 +1,141 @@
+---
+- name: secure  /etc/ssl/self/ca/intermediate/private directory
+  tags: 
+   - site-certificat
+  file:
+    path: /etc/ssl/self/ca/intermediate/private
+    state: directory
+    mode: "a+r,o+rwX"
+
+- stat: path=/etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem
+  register: ssl_site_private_key
+
+#@Todo create an alert if the key existe already
+#@Todo add -batch
+- name: create ssl site private key
+  become: true
+  when: ssl_site_private_key.stat.exists == False
+  tags: 
+     - site-certificat
+  shell: |
+    /usr/bin/expect <<delim
+    spawn openssl genrsa -aes256 \
+      -out /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem 2048
+    expect {Enter pass phrase for /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem:}
+    send "{{ ssl_key_password }}\n"
+    expect {Verifying - /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem:}
+    send "{{ ssl_key_password }}\n"
+    expect eof
+    exit 0
+    delim
+    
+- name: set right for /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem
+  when: ssl_site_private_key.stat.exists == False
+  tags: 
+     - site-certificat
+  file:
+    path: /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem
+    owner: root
+    group: root
+    mode: 0600
+
+- stat: path=/etc/ssl/self/ca/intermediate/csr/{{ fqn_website }}.csr.pem
+  register: certificate_site_csr
+
+- name: create request for ssl site key
+  become: true
+  when: certificate_site_csr.stat.exists == False
+  tags: 
+     - site-certificat
+  shell: |
+    /usr/bin/expect <<delim
+    spawn openssl req -batch -config /etc/ssl/self/ca/intermediate/openssl.cnf \
+      -subj "{{ site_cert_subject }}" \
+      -key /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem \
+      -new -sha256 -out /etc/ssl/self/ca/intermediate/csr/{{ fqn_website }}.csr.pem
+    expect {Enter pass phrase for /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem:}
+    send "{{ ssl_key_password }}\n"
+    expect eof
+    exit 0
+    delim
+ 
+- name: set right for /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem
+  when: certificate_site_csr.stat.exists == False
+  tags: 
+     - site-certificat
+  file:
+    path: /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem
+    owner: root
+    group: root
+    mode: 0400
+
+- stat: path=/etc/ssl/self/ca/intermediate/certs/{{ fqn_website }}.cert.pem
+  register: ssl_site_certificat
+
+- name: create certificat for ssl site  (sudo  openssl x509 -noout -text \
+      -in /etc/ssl/self/ca/intermediate/certs/{{ fqn_website }}.cert.pem)
+  become: true
+  when: ssl_site_certificat.stat.exists == False
+  tags: 
+     - site-certificat
+  shell: |
+    /usr/bin/expect <<delim
+    spawn openssl ca -batch -config /etc/ssl/self/ca/intermediate/openssl.cnf \
+      -extensions server_cert -days {{ ssl_site_certificat_days }} -notext -md sha256 \
+      -in /etc/ssl/self/ca/intermediate/csr/{{ fqn_website }}.csr.pem \
+      -out /etc/ssl/self/ca/intermediate/certs/{{ fqn_website }}.cert.pem
+    expect {Enter pass phrase for /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem:}
+    send "{{ ca_int_password }}\n"
+    expect eof
+    exit 0
+    delim
+
+- stat: path=/etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem.origin
+  register: ssl_key_origin
+
+- name: create a ssl site key without password 
+  become: true
+  when: ssl_site_certificat.stat.exists == False
+  tags: 
+     - site-certificat
+  shell: |
+    cp /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem \
+    /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem.origin &&
+    /usr/bin/expect <<delim
+    spawn openssl rsa \
+    -in /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem.origin \
+    -out /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem
+    expect {Enter pass phrase for /etc/ssl/self/ca/intermediate/private/{{ fqn_website }}.key.pem:}
+    send "{{ ssl_key_password }}\n"
+    expect eof
+    exit 0
+    delim
+
+#@Todo instead of forceing the site, create virtual host
+#@Todo set that with more parameter
+- name: create httpd ssl conf file
+  tags: 
+     - site-certificat
+  template:
+    src: ssl.conf.j2
+    dest: /etc/httpd/conf.d/ssl.conf
+    owner: root
+    group: root
+    mode: "u=rw,g=r,o=r"
+    
+- name: create httpd redirect conf file
+  tags: 
+     - site-certificat
+  template:
+    src: redirect.conf.j2
+    dest: /etc/httpd/conf.d/redirect-{{ fqn_website }}.conf
+    owner: root
+    group: root
+    mode: "u=rw,g=r,o=r"
+
+
+- name: restart httpd
+  service:
+    name: httpd
+    state: restarted
+

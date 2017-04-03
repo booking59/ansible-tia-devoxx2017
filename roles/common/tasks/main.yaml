@@ -38,3 +38,11 @@
     owner: root
     group: root
     mode: "u=rw,g=r,o=r"
+    
+- name: enable service httpd and ensure it is not masked
+  tags: 
+    - init
+  systemd:
+    name: httpd
+    enabled: yes
+    masked: no

@@ -125,6 +125,7 @@
   args:
     executable: /usr/bin/expect
     
+#@Todo split into several files
 # Create infra for CA-intermediate
 - name: create CA intermediate directory
   tags: 
@@ -359,3 +360,17 @@
     cat /etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem \
       /etc/ssl/self/ca/certs/ca.cert.pem > /etc/ssl/self/ca/intermediate/certs/ca-chain.cert.pem &&
     chmod 444 /etc/ssl/self/ca/intermediate/certs/ca-chain.cert.pem   
+    
+- name: copy the CA intermediate pem file for publication
+  when: ca_chain_cert.stat.exists == False
+  tags: 
+   - CA-intermediate
+   - CA-intermediate-openssl
+  become: true
+  shell: |
+    cp /etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem \
+      /var/www/html/ &&
+    cp /etc/ssl/self/ca/intermediate/certs/ca-chain.cert.pem  \
+    /var/www/html/ && \
+    chmod a+r,a-wx /var/www/html/*.pem   
+    

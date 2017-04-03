@@ -4,6 +4,8 @@
   become: yes
   vars:
     - is_openssl_template: True
+    - fqn_website: test.parisjug.net
   roles:
     - common
-    - openssl
+    - openssl-setup-ca
+    - openssl-create-site-certficat

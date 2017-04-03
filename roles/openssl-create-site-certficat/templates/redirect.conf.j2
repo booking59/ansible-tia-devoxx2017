@@ -1,0 +1,11 @@
+<VirtualHost _default_:80>
+ServerName {{ fqn_website }}
+
+ServerSignature Off
+
+RewriteEngine On
+RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,QSA,R=permanent]
+
+ErrorLog /var/log/httpd/redirect.error.log
+LogLevel warn
+</VirtualHost>

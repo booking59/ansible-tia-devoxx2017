@@ -1,0 +1,8 @@
+---
+#
+ssl_key_password: devoxx
+fqn_website: default.parisjug.net
+site_cert_subject: "/emailAddress=admin@{{ fqn_website }}/C=FR/ST=France/L=Paris/O=IT/CN={{ fqn_website }}"
+# {{ util_init_system|default(util_init_system_default) }}
+ssl_site_certificat_days: 10
+ca_int_password: devoxx
