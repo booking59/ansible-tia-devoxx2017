@@ -128,3 +128,6 @@ Temporary Items
 #https://docs.openshift.com/enterprise/3.0/dev_guide/secrets.html
 #secrets shall not go to github ;-)
 secrets/
+
+# ansible 
+*.retry
