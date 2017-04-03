@@ -1,0 +1,361 @@
+---
+- name: secure  /etc/ssl/self/ca/certs directory
+  tags: CA-root
+  file:
+    path: /etc/ssl/self/ca/certs
+    state: directory
+    mode: "u=rwX,g=rX,o=rX"
+    
+- name: secure  /etc/ssl/self/ca/newcerts directory
+  tags: CA-root
+  file:
+    path: /etc/ssl/self/ca/newcerts
+    state: directory
+    mode: "u=rwX,g=rX,o=rX"
+    
+- name: secure  /etc/ssl/self/ca/private directory
+  tags: CA-root
+  file:
+    path: /etc/ssl/self/ca/private
+    state: directory
+    mode: "u=rwX,g=rX,o=rX"
+    
+- name: secure  /etc/ssl/self/ca/private directory
+  tags: CA-root
+  file:
+    path: /etc/ssl/self/ca/private
+    state: directory
+    mode: 0700
+
+- name: create index.txt file in /etc/ssl/self/ca 
+  tags: CA-root
+  file: 
+    path: /etc/ssl/self/ca/index.txt 
+    state: touch
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- stat: path=/etc/ssl/self/ca/serial
+  register: ca_serial_cnf
+  
+- name: create serial file in /etc/ssl/self/ca
+  when: ca_serial_cnf.stat.exists == False
+  tags: CA-root
+  file: 
+    path: /etc/ssl/self/ca/serial 
+    state: touch
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- name: init serial  /etc/ssl/self/ca/private directory
+  tags: CA-root
+  when: ca_serial_cnf.stat.exists == False
+  lineinfile:
+    state: present
+    #path: /etc/ssl/self/ca/serial
+    dest: /etc/ssl/self/ca/serial
+    line: '1000'
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- stat: path=/etc/ssl/self/ca/openssl.cnf
+  register: openssl_ca_cnf
+  
+- name: create CA openssl conf file
+  when: openssl_ca_cnf.stat.exists == False
+  tags: CA-root
+  template:
+    src: openssl-ca.cnf.j2
+    dest: /etc/ssl/self/ca/openssl.cnf
+    owner: root
+    group: root
+    mode: "u=rw,g=r,o=r"
+
+- stat: path=/etc/ssl/self/ca/private/ca.key.pem
+  register: ca_root_key
+
+# sudo openssl genrsa -aes256 -out /etc/ssl/self/ca/private/ca.key.pem 4096
+- name: create the CA root private key
+  become: true
+  #when: ca_root_key.stat.exists == False
+  tags: CA-root
+  shell: |
+    /usr/bin/expect <<delim
+    spawn openssl genrsa -aes256 -out /etc/ssl/self/ca/private/ca.key.pem 4096
+    expect {Enter pass phrase for /etc/ssl/self/ca/private/ca.key.pem:}
+    send "{{ ca_password }}\n"
+    expect {Verifying - Enter pass phrase for /etc/ssl/self/ca/private/ca.key.pem:}
+    send "{{ ca_password }}\n"
+    expect eof
+    exit 0
+    delim
+
+#  openssl_privatekey:
+#    path: /etc/ssl/self/ca/private/ca.key.pem
+#    force: True
+#    size: 4096
+#    type: aes256
+
+- stat: path=/etc/ssl/self/ca/certs/ca.cert.pem
+  register: ca_root_certificate
+ 
+- stat: path=/etc/ssl/self/ca/certs/ca.cert.pem
+  register: ca_root_certificate
+  
+- name: create the CA root certificate ( you can check with sudo openssl x509 -noout -text -in /etc/ssl/self/ca/certs/ca.cert.pem)
+  when: ca_root_certificate.stat.exists == False
+  tags: CA-root
+  shell: |
+    spawn openssl req -config /etc/ssl/self/ca/openssl.cnf \
+      -key /etc/ssl/self/ca/private/ca.key.pem \
+      -new -x509 -days {{ ca_key_days }} -sha256 -extensions v3_ca \
+      -subj "{{ ca_subject }}" \
+      -out /etc/ssl/self/ca/certs/ca.cert.pem
+    
+    expect "Enter pass phrase for /etc/ssl/self/ca/private/ca.key.pem:"
+    send "{{ ca_password }}\n"
+
+    expect "Verifying - Enter pass phrase for /etc/ssl/self/ca/private/ca.key.pem:"
+    send "{{ ca_password }}\n"
+
+    exit 0
+  args:
+    executable: /usr/bin/expect
+    
+# Create infra for CA-intermediate
+- name: create CA intermediate directory
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  become: true
+  file: 
+    path: "/etc/ssl/self/ca/intermediate/certs"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- name: create CA intermediate directory
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  become: true
+  file: 
+    path: "/etc/ssl/self/ca/intermediate/crl"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+   
+- name: create CA intermediate directory
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  become: true
+  file: 
+    path: "/etc/ssl/self/ca/intermediate/csr"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+   
+- name: create CA intermediate directory
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  become: true
+  file: 
+    path: "/etc/ssl/self/ca/intermediate/newcerts"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+   
+- name: create CA intermediate directory
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  become: true
+  file: 
+    path: "/etc/ssl/self/ca/intermediate/private"
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- name: secure  /etc/ssl/self/ca/intermediate/private directory
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  file:
+    path: /etc/ssl/self/ca/intermediate/private
+    state: directory
+    mode: 0700
+
+- name: create index.txt file in /etc/ssl/self/ca/intermediate/ 
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  file: 
+    path: /etc/ssl/self/ca/intermediate/index.txt 
+    state: touch
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- stat: path=/etc/ssl/self/ca/intermediate/serial
+  register: ca_serial_int_cnf
+  
+- name: create serial file in /etc/ssl/self/ca/intermediate/
+  when: ca_serial_int_cnf.stat.exists == False
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  file: 
+    path: /etc/ssl/self/ca/intermediate/serial 
+    state: touch
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- name: init serial  /etc/ssl/self/ca/private directory
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  when: ca_serial_int_cnf.stat.exists == False
+  lineinfile:
+    state: present
+    #path: /etc/ssl/self/ca/serial
+    dest: /etc/ssl/self/ca/intermediate/serial
+    line: '1000'
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- stat: path=/etc/ssl/self/ca/intermediate/crlnumber
+  register: ca_crlnumber_int_cnf
+  
+- name: create serial file in /etc/ssl/self/ca/intermediate/
+  when: ca_crlnumber_int_cnf.stat.exists == False
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  file: 
+    path: /etc/ssl/self/ca/intermediate/crlnumber 
+    state: touch
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- name: init crlnumber  /etc/ssl/self/ca/intermediate/crlnumber directory
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  when: ca_crlnumber_int_cnf.stat.exists == False
+  lineinfile:
+    state: present
+    dest: /etc/ssl/self/ca/intermediate/crlnumber
+    line: '1000'
+    owner: root
+    group: root
+    mode: "u=rwX,g=rX,o=rX"
+
+- stat: path=/etc/ssl/self/ca/intermediate/openssl.cnf
+  register: openssl_ca_int_cnf
+
+#@Todo set that with more parameter
+- name: create CA openssl conf file
+  when: openssl_ca_int_cnf.stat.exists == False
+  tags: 
+   - CA-intermediate
+   - init-CA-intermediate
+  template:
+    src: openssl-ca-intermediate.cnf.j2
+    dest: /etc/ssl/self/ca/intermediate/openssl.cnf
+    owner: root
+    group: root
+    mode: "u=rw,g=r,o=r"
+
+- stat: path=/etc/ssl/self/ca/intermediate/private/intermediate.key.pem
+  register: ca_int_key
+
+# sudo openssl genrsa -aes256 -out /etc/ssl/self/ca/private/ca.key.pem 4096
+- name: create the CA intermediate private key
+  become: true
+  when: ca_int_key.stat.exists == False
+  tags: 
+   - CA-intermediate
+   - CA-intermediate-openssl
+  shell: |
+    /usr/bin/expect <<delim
+    spawn openssl genrsa -aes256 -out /etc/ssl/self/ca/intermediate/private/intermediate.key.pem 4096
+    expect {Enter pass phrase for /etc/ssl/self/ca/intermediate/private/intermediate.key.pem:}
+    send "{{ ca_int_password }}\n"
+    expect {Verifying - Enter pass phrase for /etc/ssl/self/ca/intermediate/private/intermediate.key.pem:}
+    send "{{ ca_int_password }}\n"
+    expect eof
+    exit 0
+    delim
+
+
+- stat: path=/etc/ssl/self/ca/intermediate/csr/intermediate.csr.pem
+  register: intermediate_csr
+
+- name: create the CA intemediate certificate request
+  when: intermediate_csr.stat.exists == False
+  become: true
+  tags: 
+   - CA-intermediate
+   - CA-intermediate-openssl
+  shell: |
+    /usr/bin/expect <<delim
+    spawn openssl req -config /etc/ssl/self/ca/intermediate/openssl.cnf -new \
+     -sha256 -subj "{{ ca_int_subject }}" \
+     -key /etc/ssl/self/ca/intermediate/private/intermediate.key.pem \
+     -out /etc/ssl/self/ca/intermediate/csr/intermediate.csr.pem 
+    expect {Enter pass phrase for /etc/ssl/self/ca/intermediate/private/intermediate.key.pem:}
+    send "{{ ca_int_password }}\n"
+    expect eof
+    exit 0
+    delim 
+ 
+ 
+- stat: path=/etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem
+  register: intermediate_cert
+  
+- name: create the signed CA intemediate certificate (sudo openssl verify -CAfile /etc/ssl/self/ca/certs/ca.cert.pem \
+      /etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem)
+  when: intermediate_cert.stat.exists == False
+  tags: 
+   - CA-intermediate
+   - CA-intermediate-openssl
+  become: true
+  shell: |
+    /usr/bin/expect <<delim
+    spawn openssl ca -batch -config /etc/ssl/self/ca/openssl.cnf \
+      -extensions v3_intermediate_ca \
+      -days {{ in_key_days }} -notext -md sha256 \
+      -in /etc/ssl/self/ca/intermediate/csr/intermediate.csr.pem \
+      -out /etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem
+    expect {Enter pass phrase for /etc/ssl/self/ca/private/ca.key.pem:}
+    send "{{ ca_password }}\n"
+    expect eof
+    exit 0
+    delim 
+
+- stat: path=/etc/ssl/self/ca/intermediate/certs/ca-chain.cert.pem
+  register: ca_chain_cert
+
+- name: create the ca-chain certificate pem file
+  when: ca_chain_cert.stat.exists == False
+  tags: 
+   - CA-intermediate
+   - CA-intermediate-openssl
+  become: true
+  shell: |
+    cat /etc/ssl/self/ca/intermediate/certs/intermediate.cert.pem \
+      /etc/ssl/self/ca/certs/ca.cert.pem > /etc/ssl/self/ca/intermediate/certs/ca-chain.cert.pem &&
+    chmod 444 /etc/ssl/self/ca/intermediate/certs/ca-chain.cert.pem   

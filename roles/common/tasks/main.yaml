@@ -1,0 +1,40 @@
+---
+- name: Add repository
+  tags: 
+    - util
+    - init
+  become: true
+  yum_repository:
+    name: epel
+    description: EPEL YUM repo
+    baseurl: https://dl.fedoraproject.org/pub/epel/$releasever/$basearch/
+    
+- name: install the latest version of needed package
+  tags: 
+    - util
+    - init
+  become: true
+  package: name={{item}} state=latest
+  with_items:
+       - httpd 
+       - python-certbot-apache
+       - tmux
+       - openssl
+       - expect
+ 
+- name: upgrade all packages
+  tags: 
+    - util
+    - init
+  package: name=* state=latest
+  
+  
+- name: install default index file
+  tags: 
+    - init
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: root
+    group: root
+    mode: "u=rw,g=r,o=r"

@@ -1,0 +1,9 @@
+---
+- name: Install Apache httpd servier with an openssl ca and certificated
+  hosts: all
+  become: yes
+  vars:
+    - is_openssl_template: True
+  roles:
+    - common
+    - openssl
